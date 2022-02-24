@@ -1211,3 +1211,44 @@ impl<'agent> UpdateBuilder<'agent> {
         }
     }
 }
+
+/// A function to verify a certificate for a given request ID and yield the response without using async
+pub fn ios_verify(
+    request_id: &RequestId,
+    cert: Certificate,
+) -> Result<RequestStatusResponse, AgentError> {
+    let sig = &cert.signature;
+
+    let root_hash = cert.tree.digest();
+    let mut msg = vec![];
+    msg.extend_from_slice(IC_STATE_ROOT_DOMAIN_SEPARATOR);
+    msg.extend_from_slice(&root_hash);
+
+    fn verify(cert: &Certificate) -> Result<Vec<u8>, AgentError> {
+        match &cert.delegation {
+            None => Ok(IC_ROOT_KEY.to_vec()),
+            Some(delegation) => {
+                let cert: Certificate = serde_cbor::from_slice(&delegation.certificate)
+                    .map_err(AgentError::InvalidCborData)?;
+                verify(&cert)?;
+                let public_key_path = [
+                    "subnet".into(),
+                    delegation.subnet_id.clone().into(),
+                    "public_key".into(),
+                ];
+                lookup_value(&cert, public_key_path).map(|pk| pk.to_vec())
+            }
+        }
+    }
+
+    let der_key = verify(&cert)?;
+
+    let key = extract_der(der_key)?;
+
+    let result = bls::core_verify(sig, &*msg, &*key);
+    if result != bls::BLS_OK {
+        Err(AgentError::CertificateVerificationFailed())
+    } else {
+        lookup_request_status(cert, request_id)
+    }
+}
