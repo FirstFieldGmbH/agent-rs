@@ -13,8 +13,13 @@ pub mod status;
 pub use agent_config::AgentConfig;
 pub use agent_error::AgentError;
 pub use builder::AgentBuilder;
+use http::Request;
+use ic_types::hash_tree;
 pub use nonce::{NonceFactory, NonceGenerator};
 pub use response::{Replied, RequestStatusResponse};
+use rustls::internal::msgs::handshake::CertReqExtensions;
+use serde::Deserialize;
+use serde_json::json;
 
 #[cfg(test)]
 mod agent_test;
@@ -26,7 +31,7 @@ use crate::{
     },
     export::Principal,
     hash_tree::Label,
-    identity::Identity,
+    identity::{Identity, error},
     to_request_id, RequestId,
 };
 use garcon::Waiter;
@@ -46,7 +51,7 @@ use std::{
     pin::Pin,
     sync::{Arc, RwLock},
     task::{Context, Poll},
-    time::Duration,
+    time::Duration, ffi::CString,
 };
 
 const IC_REQUEST_DOMAIN_SEPARATOR: &[u8; 11] = b"\x0Aic-request";
@@ -1251,4 +1256,81 @@ pub fn ios_verify(
     } else {
         lookup_request_status(cert, request_id)
     }
+}
+
+#[derive(Deserialize, Serialize)]
+struct IOSVerify<'a> {
+    request_id: RequestId,
+    cert: Certificate<'a>,
+}
+
+fn error(ctx: &str, msg: String) -> CString {
+    let res = json!({"stage": ctx, "error": msg}).to_string();
+    CString::new(res).unwrap()
+}
+
+#[no_mangle]
+pub fn ios_verify_json(s: CString) -> CString {
+    let b = s.as_bytes();
+    let IOSVerify {request_id, cert} =
+        match serde_json::from_slice(&b[..]) {
+            Ok(v) => v,
+            Err(e) => return error("Deserialization", e.to_string()),
+        };
+    let json_response = match ios_verify(&request_id, cert) {
+        Ok(response) => match serde_json::to_vec(&response) {
+            Ok(v) => v,
+            Err(e) => return error("Serialization", e.to_string()),
+        },
+        Err(e) => return error("Verification", e.to_string()),
+    };
+    CString::new(json_response).unwrap()
+}
+
+#[test]
+fn generate_examples(){
+    fn prt(cs: CString) {
+        println!("{}", cs.into_string().unwrap());
+    }
+
+    let dummy = "Some Error".to_string();
+
+    println!("Inputs :");
+
+    let input = IOSVerify{
+        request_id: RequestId::new(&[7;32]),
+        cert: Certificate {
+            tree: hash_tree::empty(),
+            signature: vec![],
+            delegation: None,
+        },
+    };
+
+    println!("{}", serde_json::to_string(&input).unwrap());
+
+    println!("Outputs:");
+
+    let outputs = vec![
+        RequestStatusResponse::Unknown,
+        RequestStatusResponse::Received,
+        RequestStatusResponse::Processing,
+        RequestStatusResponse::Replied {
+            reply: Replied::CallReplied(vec![1,2,3,4,5,6]),
+        },
+        RequestStatusResponse::Rejected {
+            reject_code: 69,
+            reject_message: "Rejected for some reason".to_string(),
+        },
+        RequestStatusResponse::Done,
+    ];
+
+    for output in outputs {
+        println!("{}", serde_json::to_string(&output).unwrap());
+    }
+
+    println!("Errors:");
+    prt(error("Deserialization", dummy.clone()));
+    prt(error("Serialization", dummy.clone()));
+    prt(error("Verification", dummy.clone()));
+    prt(error("Verification", AgentError::CertificateVerificationFailed().to_string()));
 }

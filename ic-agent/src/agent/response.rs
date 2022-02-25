@@ -1,5 +1,6 @@
+use serde::Serialize;
 /// The response of /api/v2/canister/<effective_canister_id>/read_state with "request_status" request type.
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Serialize)]
 pub enum RequestStatusResponse {
     Unknown,
     Received,
@@ -14,7 +15,7 @@ pub enum RequestStatusResponse {
     Done,
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Ord, PartialOrd, Eq, PartialEq, Serialize)]
 pub enum Replied {
     CallReplied(Vec<u8>),
 }
