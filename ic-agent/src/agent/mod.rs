@@ -1296,7 +1296,7 @@ fn generate_examples(){
     let input = IOSVerify{
         request_id: RequestId::new(&[7;32]),
         cert: Certificate {
-            tree: hash_tree::empty(),
+            tree: ic_types::hash_tree::empty(),
             signature: vec![],
             delegation: None,
         },
