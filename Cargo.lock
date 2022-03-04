@@ -219,7 +219,7 @@ dependencies = [
  "candid_derive",
  "codespan-reporting",
  "hex",
- "ic-types",
+ "ic-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop",
  "lalrpop-util",
  "leb128",
@@ -820,7 +820,7 @@ dependencies = [
  "hex",
  "http",
  "hyper-rustls",
- "ic-types",
+ "ic-types 0.3.0 (git+https://github.com/FirstFieldGmbH/ic-types.git?rev=948709c5d7fd8b128abfdae0bb3f21ca57e0140b)",
  "leb128",
  "mime",
  "mockito",
@@ -853,7 +853,7 @@ dependencies = [
  "garcon",
  "hex",
  "ic-agent",
- "ic-types",
+ "ic-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ic-utils",
  "mime",
  "mime_guess",
@@ -890,6 +890,20 @@ dependencies = [
  "serde",
  "serde_bytes",
  "sha2 0.9.8",
+ "thiserror",
+]
+
+[[package]]
+name = "ic-types"
+version = "0.3.0"
+source = "git+https://github.com/FirstFieldGmbH/ic-types.git?rev=948709c5d7fd8b128abfdae0bb3f21ca57e0140b#948709c5d7fd8b128abfdae0bb3f21ca57e0140b"
+dependencies = [
+ "base32",
+ "crc32fast",
+ "hex",
+ "serde",
+ "serde_bytes",
+ "sha2 0.10.1",
  "thiserror",
 ]
 
@@ -943,7 +957,7 @@ dependencies = [
  "humantime",
  "ic-agent",
  "ic-asset",
- "ic-types",
+ "ic-types 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ic-utils",
  "libflate",
  "num-traits",
